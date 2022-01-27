@@ -16,6 +16,8 @@ namespace MemoryLibraryCS.Library
 
         private Process _process;
         private string? _targetProcess;
+        private ulong _imageBase;
+        private IntPtr _processHandle;
         public MemoryManager(string processName)
         {
             // set target process name for later use (if any)
@@ -32,38 +34,43 @@ namespace MemoryLibraryCS.Library
             {
                 OnProcessExit.Invoke();
             };
+
+            // set the image base
+            _imageBase = GetImageBase(_process.MainModule?.FileName);
+            _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.Imports.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
         }
 
-        public void ParsePE(string fileLocation)
+
+
+        public ulong GetImageBase(string? fileLocation)
         {
+            // check if the file location exists.
+            if (fileLocation == null)
+                throw new Exception("File location does not exist.");
+
             if (File.Exists(fileLocation))
             {
-                var FileData = File.ReadAllBytes(fileLocation).ToList();
-                const int BaseHeader = 0x3c;
-
-                var loc = BitConverter.ToInt32(FileData.ToArray(), BaseHeader);
-                var name = Encoding.ASCII.GetString(FileData.Take(new Range(new(loc), new(loc + 4))).ToArray());
-                // Base offset of the optional headers
-                var PEBase = BitConverter.ToInt16(FileData.ToArray(), loc + 24); // 24 is the offset of the PE magic number
-                if(PEBase == 0x20B)
-                {
-                    // PE32+
-                    var ImageBase = BitConverter.ToInt64(FileData.ToArray(), PEBase + 24);
-                    Console.WriteLine($"Image base is: {ImageBase.ToString("X")}");
-                }
-                else if (PEBase == 0x10B)
-                {
-                    // PE32
-                }
+                var FileData = File.ReadAllBytes(fileLocation);
+                PEHeaders h = new(new MemoryStream(FileData));
+                return h.PEHeader?.ImageBase ?? 0x0;
             }
+            else
+                throw new Exception("File does not exist.");
         }
 
-        public T Read<T>(long memoryAddress)
+        public T Read<T>(long memoryAddress) where T : struct
         {
-            ParsePE(_process.MainModule.FileName);
-            var ProcessHandle = _process.Handle;
-            var ModuleBase = _process.MainModule.BaseAddress;
-            return (T)Convert.ChangeType((ProcessHandle.ToInt64() - ModuleBase.ToInt64()) + memoryAddress, typeof(T));
+            Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value);
+            return Value;
+        }
+
+        public void Write<T>(long memoryAddress, T value)
+        {
+            bool res1 = Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, Marshal.SizeOf<T>(), (uint)Helpers.Imports.PAGE_CONSTANT.PAGE_READWRITE, out UIntPtr old);
+
+            Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value);
+
+            bool res3 = Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, Marshal.SizeOf<T>(), old.ToUInt32(), out old);
         }
 
         public void Dispose()
