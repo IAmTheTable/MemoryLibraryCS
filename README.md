@@ -1,6 +1,10 @@
 # MemoryLibraryCS
 A simple and easy to use memory manipulation library.
 
+I wrote this library because of 2 reasons,
+1) Im bored and have nothing better to do.
+2) I love C# and C++, I'm implementing C++ features into C# the best I can (with my current knowledge set).
+
 # Information
 This library will allow you to externally edit the memory of other applications.
 Please do note: This library is also not 100% complete and I'm sure has bugs reguarding use.
@@ -16,7 +20,7 @@ MemoryManager Manager = new("CPPTesting"); // Dotnet 6.0 Standard as of 1/31/202
 var Value = Manager.Read<int>(new(0xDEADBEEF));
 // Print out our value in console.
 Console.WriteLine($"Value of 0xDEADBEEF -> {Value}");
-// Overwrite our value with the value of 144(DEC), 0x90(HEX)
+// Overwrite our original value with the value of 144(DEC), 0x90(HEX)
 Manager.Write<int>(new(0xDEADBEEF), 0x90);
 // Reread the integer at the address
 Value = Manager.Read<int>(new(0xDEADBEEF));
