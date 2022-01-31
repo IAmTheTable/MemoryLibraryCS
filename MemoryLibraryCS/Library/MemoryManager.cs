@@ -58,19 +58,26 @@ namespace MemoryLibraryCS.Library
                 throw new Exception("File does not exist.");
         }
 
-        public T Read<T>(long memoryAddress) where T : struct
+        public T Read<T>(IntPtr memoryAddress) where T : struct
         {
-            Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value);
+            if (!Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value))
+                throw new Exception("Failed to read memory region.");
+
             return Value;
         }
 
-        public void Write<T>(long memoryAddress, T value)
+        
+        public unsafe void Write<T>(IntPtr memoryAddress, T value) where T : struct
         {
-            bool res1 = Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, Marshal.SizeOf<T>(), (uint)Helpers.Imports.PAGE_CONSTANT.PAGE_READWRITE, out UIntPtr old);
+            // try and unprotect the memory address
+            if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.Imports.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))
+                throw new Exception("Failed to unprotect memory region.");
 
-            Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value);
+            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value))
+                throw new Exception("Failed to write memory.");
 
-            bool res3 = Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, Marshal.SizeOf<T>(), old.ToUInt32(), out old);
+            if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), old, out uint _))
+                throw new Exception("Failed to restore memory region.");
         }
 
         public void Dispose()

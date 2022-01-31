@@ -15,7 +15,7 @@ namespace MemoryLibraryCS.Helpers
 {
     internal static class Imports
     {
-        public enum PAGE_CONSTANT : uint
+        public enum PAGE_CONSTANT : int
         {
             PAGE_EXECUTE = 0x10,
             PAGE_EXECUTE_READ = 0x20,
@@ -52,29 +52,36 @@ namespace MemoryLibraryCS.Helpers
         }
 
         [DllImport("Kernel32.dll", EntryPoint = "OpenProcess")]
-        public static extern IntPtr GetProcessHandle(uint access, bool inheritHandle, int ProcessId); 
+        public static extern IntPtr GetProcessHandle(uint access, bool inheritHandle, int ProcessId);
+
+        [DllImport("Kernel32.dll", EntryPoint = "GetLastError")]
+        public static extern uint GetLastError();
 
 
         [DllImport("Kernel32.dll", EntryPoint = "ReadProcessMemory")]
-        private static extern bool Read_Memory(IntPtr handle, long Address, out IntPtr value, int sz, out int BytesRead);
-        public static bool ReadMemory<T>(IntPtr handle, long Address, out T value)
+        private static extern bool Read_Memory(IntPtr handle, IntPtr Address, out IntPtr value, int sz, out int BytesRead);
+        public static bool ReadMemory<T>(IntPtr handle, IntPtr Address, out T value)
         {
             bool Result = Read_Memory(handle, Address, out IntPtr ResultValue, Unsafe.SizeOf<T>(), out int _BytesRead);
             value = (T)Convert.ChangeType(ResultValue.ToInt32(), typeof(T));
             return Result;
         }
 
-        [DllImport("Kernel32.dll", EntryPoint = "WriteProcessMemory", SetLastError = true)]
-        private unsafe static extern bool Write_Memory(IntPtr handle, long Address, IntPtr value, int sz);
+        [DllImport("Kernel32.dll")]
+        private unsafe static extern bool WriteProcessMemory(IntPtr handle, IntPtr Address, byte[] value, int sz, out IntPtr bytes);
 
-        public unsafe static void WriteMemory<T>(IntPtr handle, long Address, T _value)
+        public unsafe static bool WriteMemory<T>(IntPtr handle, IntPtr Address, T _value) where T : struct
         {
-            var x = GCHandle.Alloc(_value, GCHandleType.Pinned);
-            bool res2 = Write_Memory(handle, Address, x.AddrOfPinnedObject(), 4);
-            x.Free();
+            /* some really bad reflection method of passing T as a value.
+             * Its necessary, because this will only work at runtime.
+             */
+
+            byte[] result = (byte[])typeof(BitConverter).GetMethod("GetBytes", new[] { typeof(T) }).Invoke(null, new[] { (object)_value });
+
+            return WriteProcessMemory(handle, Address, result, Unsafe.SizeOf<T>(), out IntPtr bytes);
         }
 
         [DllImport("Kernel32.dll", EntryPoint = "VirtualProtectEx")]
-        public static extern bool VirtualProtectEx(IntPtr handle, long Address, int size, uint NewProtect, out UIntPtr OldProtect); 
+        public unsafe static extern bool VirtualProtectEx(IntPtr handle, IntPtr Address, uint size, uint NewProtect, out uint OldProtect);
     }
 }
