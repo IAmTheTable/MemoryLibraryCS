@@ -8,6 +8,6 @@ namespace MemoryLibraryCS.Library
 {
     public class HookingManager
     {
-
+        // Todo
     }
 }
