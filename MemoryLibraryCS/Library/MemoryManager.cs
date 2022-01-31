@@ -65,13 +65,13 @@ namespace MemoryLibraryCS.Library
         }
 
         
-        public unsafe void Write<T>(IntPtr memoryAddress, T value, out int bytesRead) where T : struct
+        public unsafe void Write<T>(IntPtr memoryAddress, T value) where T : struct
         {
             // try and unprotect the memory address
             if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.Imports.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))
                 throw new Exception("Failed to unprotect memory region.");
 
-            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value, out bytesRead))
+            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value, out int bytesWrote))
                 throw new Exception("Failed to write memory.");
 
             if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), old, out uint _))
