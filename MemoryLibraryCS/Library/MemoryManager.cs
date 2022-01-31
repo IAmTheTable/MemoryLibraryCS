@@ -21,7 +21,7 @@ namespace MemoryLibraryCS.Library
         public MemoryManager(string processName)
         {
             // check if the process actually exists
-            if (Process.GetProcessesByName(processName).Length < 0)
+            if (Process.GetProcessesByName(processName).Length < 1)
                 throw new Exception("Process not found.");
 
             // set target process name for later use (if any)
