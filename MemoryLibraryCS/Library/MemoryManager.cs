@@ -20,12 +20,12 @@ namespace MemoryLibraryCS.Library
         private IntPtr _processHandle;
         public MemoryManager(string processName)
         {
-            // set target process name for later use (if any)
-            _targetProcess = processName;
-
             // check if the process actually exists
             if (Process.GetProcessesByName(processName).Length < 0)
                 throw new Exception("Process not found.");
+
+            // set target process name for later use (if any)
+            _targetProcess = processName;
 
             // set our process
             _process = Process.GetProcessesByName(processName)[0];
@@ -39,8 +39,6 @@ namespace MemoryLibraryCS.Library
             _imageBase = GetImageBase(_process.MainModule?.FileName);
             _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.Imports.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
         }
-
-
 
         public ulong GetImageBase(string? fileLocation)
         {
@@ -60,20 +58,20 @@ namespace MemoryLibraryCS.Library
 
         public T Read<T>(IntPtr memoryAddress) where T : struct
         {
-            if (!Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value))
+            if (!Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value, out int bytesRead))
                 throw new Exception("Failed to read memory region.");
 
             return Value;
         }
 
         
-        public unsafe void Write<T>(IntPtr memoryAddress, T value) where T : struct
+        public unsafe void Write<T>(IntPtr memoryAddress, T value, out int bytesRead) where T : struct
         {
             // try and unprotect the memory address
             if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.Imports.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))
                 throw new Exception("Failed to unprotect memory region.");
 
-            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value))
+            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value, out bytesRead))
                 throw new Exception("Failed to write memory.");
 
             if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), old, out uint _))

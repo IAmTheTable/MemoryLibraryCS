@@ -52,25 +52,25 @@ namespace MemoryLibraryCS.Helpers
         }
 
         [DllImport("Kernel32.dll", EntryPoint = "OpenProcess")]
-        public static extern IntPtr GetProcessHandle(uint access, bool inheritHandle, int ProcessId);
+        public static extern IntPtr GetProcessHandle(uint access, bool inheritHandle, int processId);
 
         [DllImport("Kernel32.dll", EntryPoint = "GetLastError")]
         public static extern uint GetLastError();
 
 
         [DllImport("Kernel32.dll", EntryPoint = "ReadProcessMemory")]
-        private static extern bool Read_Memory(IntPtr handle, IntPtr Address, out IntPtr value, int sz, out int BytesRead);
-        public static bool ReadMemory<T>(IntPtr handle, IntPtr Address, out T value)
+        private static extern bool ReadProcessMemory(IntPtr handle, IntPtr address, out IntPtr value, int sz, out int bytesRead);
+        public static bool ReadMemory<T>(IntPtr handle, IntPtr address, out T value, out int bytesRead)
         {
-            bool Result = Read_Memory(handle, Address, out IntPtr ResultValue, Unsafe.SizeOf<T>(), out int _BytesRead);
+            bool Result = ReadProcessMemory(handle, address, out IntPtr ResultValue, Unsafe.SizeOf<T>(), out bytesRead);
             value = (T)Convert.ChangeType(ResultValue.ToInt32(), typeof(T));
             return Result;
         }
 
         [DllImport("Kernel32.dll")]
-        private unsafe static extern bool WriteProcessMemory(IntPtr handle, IntPtr Address, byte[] value, int sz, out IntPtr bytes);
+        private unsafe static extern bool WriteProcessMemory(IntPtr handle, IntPtr address, byte[] value, int sz, out int bytes);
 
-        public unsafe static bool WriteMemory<T>(IntPtr handle, IntPtr Address, T _value) where T : struct
+        public unsafe static bool WriteMemory<T>(IntPtr handle, IntPtr address, T _value, out int bytesRead) where T : struct
         {
             /* some really bad reflection method of passing T as a value.
              * Its necessary, because this will only work at runtime.
@@ -78,10 +78,10 @@ namespace MemoryLibraryCS.Helpers
 
             byte[] result = (byte[])typeof(BitConverter).GetMethod("GetBytes", new[] { typeof(T) }).Invoke(null, new[] { (object)_value });
 
-            return WriteProcessMemory(handle, Address, result, Unsafe.SizeOf<T>(), out IntPtr bytes);
+            return WriteProcessMemory(handle, address, result, Unsafe.SizeOf<T>(), out bytesRead);
         }
 
         [DllImport("Kernel32.dll", EntryPoint = "VirtualProtectEx")]
-        public unsafe static extern bool VirtualProtectEx(IntPtr handle, IntPtr Address, uint size, uint NewProtect, out uint OldProtect);
+        public unsafe static extern bool VirtualProtectEx(IntPtr handle, IntPtr address, uint size, uint newProtect, out uint oldProtect);
     }
 }
