@@ -35,6 +35,7 @@ namespace MemoryLibraryCS.Library
 
         public bool AddHook<ret_type, Args>(long address, Func<Args[], ret_type> func)
         {
+            _manager.ParseFile(_processInstance.MainModule.FileName);
             return true;
         }
     }

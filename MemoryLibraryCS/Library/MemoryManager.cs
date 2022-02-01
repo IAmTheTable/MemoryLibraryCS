@@ -40,6 +40,22 @@ namespace MemoryLibraryCS.Library
             _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
         }
 
+        public PEHeader ParseFile(string? fileLocation)
+        {            
+            // check if the file location exists.
+            if (fileLocation == null)
+                throw new Exception("File location does not exist.");
+
+            if (File.Exists(fileLocation))
+            {
+                var FileData = File.ReadAllBytes(fileLocation);
+                PEHeaders h = new(new MemoryStream(FileData));
+                return h.PEHeader;
+            }
+            else
+                throw new Exception("File does not exist.");
+
+        }
         public ulong GetImageBase(string? fileLocation)
         {
             // check if the file location exists.
