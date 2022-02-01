@@ -115,8 +115,12 @@ namespace MemoryLibraryCS.Helpers
         );
          */
 
-        [DllImport("Kernel32.dll")]
-        private static extern IntPtr CreateRemoteThread()
+        [DllImport("Kernel32.dll", EntryPoint = "CreateRemoteThreadEx")]
+        private static extern IntPtr CreateRemoteThread(IntPtr handle, int attr, uint stackSize, long startAddress, object param, uint creationFlags, int attrList, out uint threadId);
+        public static IntPtr CreateThread(IntPtr handle, long address)
+        {
+            return CreateRemoteThread(handle, 0, 0, address, null, 0, 0, out uint _);
+        }
 
 
         [DllImport("Kernel32.dll", EntryPoint = "VirtualFreeEx")]

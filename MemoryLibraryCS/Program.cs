@@ -12,6 +12,8 @@ namespace MemoryLibraryCS
         static void Main(string[] args)
         {
             MemoryManager manager = new("CPPTesting");
+            HookingManager hman = new("CPPTesting");
+            hman.Call(0x7FF626B0116D);
         }
     }
 }

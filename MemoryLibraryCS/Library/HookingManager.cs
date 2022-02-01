@@ -33,6 +33,10 @@ namespace MemoryLibraryCS.Library
             _manager = new(_targetProcess);
         }
 
+        public void Call(long address)
+        {
+            Helpers.Imports.CreateThread(_processInstance.Handle, address);
+        }
 
         public bool AddHook<ret_type, Args>(long address, Func<Args[], ret_type> func)
         {
