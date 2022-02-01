@@ -37,7 +37,7 @@ namespace MemoryLibraryCS.Library
 
             // set the image base
             _imageBase = GetImageBase(_process.MainModule?.FileName);
-            _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.Imports.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
+            _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
         }
 
         public ulong GetImageBase(string? fileLocation)
@@ -56,26 +56,60 @@ namespace MemoryLibraryCS.Library
                 throw new Exception("File does not exist.");
         }
 
-        public T Read<T>(IntPtr memoryAddress) where T : struct
+        public T Read<T>(long memoryAddress) where T : struct
         {
-            if (!Helpers.Imports.ReadMemory(_processHandle, memoryAddress, out T Value, out int bytesRead))
+            if (!Helpers.Imports.ReadMemory(_processHandle, (IntPtr)memoryAddress, out T Value, out int bytesRead))
                 throw new Exception("Failed to read memory region.");
 
             return Value;
         }
 
         
-        public unsafe void Write<T>(IntPtr memoryAddress, T value) where T : struct
+        public unsafe void Write<T>(long memoryAddress, T value) where T : struct
         {
             // try and unprotect the memory address
-            if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.Imports.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))
+            if (!Helpers.Imports.VirtualProtectEx(_processHandle, (IntPtr)memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))
                 throw new Exception("Failed to unprotect memory region.");
 
-            if (!Helpers.Imports.WriteMemory(_processHandle, memoryAddress, value, out int bytesWrote))
+            if (!Helpers.Imports.WriteMemory(_processHandle, (IntPtr)memoryAddress, value, out int bytesWrote))
                 throw new Exception("Failed to write memory.");
 
-            if (!Helpers.Imports.VirtualProtectEx(_processHandle, memoryAddress, (uint)Marshal.SizeOf<T>(), old, out uint _))
+            if (!Helpers.Imports.VirtualProtectEx(_processHandle, (IntPtr)memoryAddress, (uint)Marshal.SizeOf<T>(), old, out uint _))
                 throw new Exception("Failed to restore memory region.");
+        }
+
+        /// <summary>
+        /// Modify a memory region with protection levels
+        /// </summary>
+        /// <param name="memoryAddress">Start address of the memory region to modify.</param>
+        /// <param name="regionSize">The amount of bytes to modify.</param>
+        /// <param name="pageAccess">The page access flags to use.</param>
+        /// <param name="oldPageAccess">The old pageAccess value.</param>
+        /// <returns>True if the modification was succesful.</returns>
+        /// <exception cref="MemoryException">Failure to modify memory region</exception>
+        /// <example>if(!Manager.Unprotect(0xDEADBEEF, 4, PageAccess.READ_WRITE, out uint oldPermissions) Console.WriteLine("Modification was unsuccessful");</example>
+        public unsafe bool Unprotect(long memoryAddress, uint regionSize, uint pageAccess, out uint oldPageAccess)
+        {
+            if (!Helpers.Imports.VirtualProtectEx(_processHandle, (IntPtr)memoryAddress, regionSize, pageAccess, out oldPageAccess))
+                throw new MemoryException("Failed to unprotect memory region.");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Allocate memory at a specified point
+        /// </summary>
+        /// <param name="memoryAddress">The base address to allocate at.</param>
+        /// <param name="amountBytes">The amount of bytes to allocate.</param>
+        /// <param name="allocationFlags" cref="Helpers.AllocationType">The type of allocation.</param>
+        /// <param name="allocationProtection">The protection flags of the new memory region.</param>
+        /// <returns>The base address of the newly allocated region.</returns>
+        public unsafe long Allocate(long memoryAddress, uint amountBytes, Helpers.AllocationType allocationFlags, Helpers.PAGE_CONSTANT allocationProtection)
+        {
+            var Result = Helpers.Imports.VirtualAllocEx(_processHandle, (IntPtr)memoryAddress, amountBytes, (uint)allocationFlags, (uint)allocationProtection);
+            if (Result == null)
+                throw new MemoryException("Failed to allocate memory");
+            return Result;
         }
 
         public void Dispose()
