@@ -33,9 +33,11 @@ namespace MemoryLibraryCS.Library
             _manager = new(_targetProcess);
         }
 
+
         public bool AddHook<ret_type, Args>(long address, Func<Args[], ret_type> func)
         {
-            _manager.ParseFile(_processInstance.MainModule.FileName);
+            var fileData = _manager.ParseFile(_processInstance.MainModule.FileName);
+            
             return true;
         }
     }
