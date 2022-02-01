@@ -99,18 +99,25 @@ namespace MemoryLibraryCS.Library
         /// <summary>
         /// Allocate memory at a specified point
         /// </summary>
-        /// <param name="memoryAddress">The base address to allocate at.</param>
         /// <param name="amountBytes">The amount of bytes to allocate.</param>
         /// <param name="allocationFlags" cref="Helpers.AllocationType">The type of allocation.</param>
         /// <param name="allocationProtection">The protection flags of the new memory region.</param>
         /// <returns>The base address of the newly allocated region.</returns>
-        public unsafe long Allocate(long memoryAddress, uint amountBytes, Helpers.AllocationType allocationFlags, Helpers.PAGE_CONSTANT allocationProtection)
+        public unsafe long Allocate(uint amountBytes, Helpers.AllocationType allocationFlags = Helpers.AllocationType.MEM_COMMIT | Helpers.AllocationType.MEM_RESERVE, Helpers.PAGE_CONSTANT allocationProtection = Helpers.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE)
         {
-            var Result = Helpers.Imports.VirtualAllocEx(_processHandle, (IntPtr)memoryAddress, amountBytes, (uint)allocationFlags, (uint)allocationProtection);
+            var Result = Helpers.Imports.VirtualAllocEx(_processHandle, IntPtr.Zero, amountBytes, (uint)allocationFlags, (uint)allocationProtection);
             if (Result == null)
                 throw new MemoryException("Failed to allocate memory");
             return Result;
         }
+
+        public bool Free(long address)
+        {
+            if (!Helpers.Imports.VirtualFreeEx(_processHandle, (IntPtr)address, 0, (uint)Helpers.FreeType.MEM_RELEASE))
+                throw new MemoryException("Failed to free memory.");
+            return true;
+        }
+
 
         public void Dispose()
         {

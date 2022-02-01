@@ -94,8 +94,19 @@ namespace MemoryLibraryCS.Helpers
         /// </summary>
         MEM_TOP_DOWN = 0x00100000
     }
+    public enum FreeType
+    {
+        MEM_DECOMMIT = 0x00004000,
+        MEM_RELEASE = 0x00008000,
+        MEM_COALESCE_PLACEHOLDERS = 0x00000001,
+        MEM_PRESERVE_PLACEHOLDER = 0x00000002
+    }
+
     internal static class Imports
     {
+        [DllImport("Kernel32.dll", EntryPoint = "VirtualFreeEx")]
+        public static extern bool VirtualFreeEx(IntPtr handle, IntPtr address, uint size, uint freeType);
+
 
         [DllImport("Kernel32.dll", EntryPoint = "OpenProcess")]
         public static extern IntPtr GetProcessHandle(uint access, bool inheritHandle, int processId);
