@@ -13,6 +13,8 @@ namespace MemoryLibraryCS.Library
     public class MemoryManager : IDisposable
     {
         public Action OnProcessExit;
+        public readonly string ProcessName;
+        public readonly PEReader FileReader;
 
         private Process _process;
         private string? _targetProcess;
@@ -26,6 +28,7 @@ namespace MemoryLibraryCS.Library
 
             // set target process name for later use (if any)
             _targetProcess = processName;
+            ProcessName = processName;
 
             // set our process
             _process = Process.GetProcessesByName(processName)[0];
@@ -38,17 +41,29 @@ namespace MemoryLibraryCS.Library
             // set the image base
             _imageBase = GetImageBase(_process.MainModule?.FileName);
             _processHandle = Helpers.Imports.GetProcessHandle((uint)Helpers.PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, _process.Id);
+            FileReader = new PEReader(new MemoryStream(File.ReadAllBytes(_process.MainModule?.FileName)));
+        }
+
+        public static long GetFunctionAddress(long handle, string name) => Helpers.Imports.GetProcAddress((IntPtr)handle, name).ToInt64();
+        public long GetFunctionAddress(string name) => Helpers.Imports.GetProcAddress(_processHandle, name).ToInt64();
+
+        public static long GetModuleHandle(string name) => Helpers.Imports.GetModuleHandleA(name).ToInt64();
+        public static long GetModuleHandleEx(string name)
+        {
+            if (!Helpers.Imports.GetModuleHandleExW(0, name, out IntPtr handle))
+                throw new MemoryException("Could not get module handle.");
+            return handle.ToInt64();
         }
 
         public PEHeader ParseFile(string? fileLocation)
-        {            
+        {
             // check if the file location exists.
             if (fileLocation == null)
                 throw new Exception("File location does not exist.");
 
             if (File.Exists(fileLocation))
             {
-                var FileData = File.ReadAllBytes(fileLocation);
+                var FileData = File.ReadAllBytes(_process.MainModule?.FileName);
                 PEHeaders h = new(new MemoryStream(FileData));
                 return h.PEHeader;
             }
@@ -80,8 +95,8 @@ namespace MemoryLibraryCS.Library
             return Value;
         }
 
-        
-        public unsafe void Write<T>(long memoryAddress, T value) where T : struct
+
+        public unsafe void Write<T>(long memoryAddress, T value) where T : notnull
         {
             // try and unprotect the memory address
             if (!Helpers.Imports.VirtualProtectEx(_processHandle, (IntPtr)memoryAddress, (uint)Marshal.SizeOf<T>(), (int)Helpers.PAGE_CONSTANT.PAGE_EXECUTE_READWRITE, out uint old))

@@ -121,6 +121,10 @@ namespace MemoryLibraryCS.Helpers
         {
             return CreateRemoteThread(handle, 0, 0, address, null, 0, 0, out uint _);
         }
+        public static IntPtr CreateThread(IntPtr handle, long address, dynamic variable)
+        {
+            return CreateRemoteThread(handle, 0, 0, address, variable, 0, 0, out uint _);
+        }
 
 
         [DllImport("Kernel32.dll", EntryPoint = "VirtualFreeEx")]
@@ -145,15 +149,38 @@ namespace MemoryLibraryCS.Helpers
         }
 
         [DllImport("Kernel32.dll")]
+        public static extern IntPtr GetProcAddress(IntPtr handle, string funcName);
+        [DllImport("Kernel32.dll")]
+        public static extern IntPtr GetModuleHandleA(string moduleName);
+        [DllImport("Kernel32.dll")]
+        public static extern bool GetModuleHandleExW(int flags, string moduleName, out IntPtr handle);
+
+
+
+
+        [DllImport("Kernel32.dll")]
         private unsafe static extern bool WriteProcessMemory(IntPtr handle, IntPtr address, byte[] value, int sz, out int bytes);
 
-        public unsafe static bool WriteMemory<T>(IntPtr handle, IntPtr address, T _value, out int bytesRead) where T : struct
+        public unsafe static bool WriteMemory<T>(IntPtr handle, IntPtr address, T _value, out int bytesRead) where T : notnull
         {
             /* some really bad reflection method of passing T as a value.
              * Its necessary, because this will only work at runtime.
              */
 
-            byte[] result = (byte[])typeof(BitConverter).GetMethod("GetBytes", new[] { typeof(T) }).Invoke(null, new[] { (object)_value });
+            var GetBytes = typeof(BitConverter).GetMethod("GetBytes", new[]
+            {
+                // return long if type is IntPtr, otherwise return actual type
+                (typeof(T) == typeof(IntPtr)) ? typeof(long) : typeof(T)
+            }); //
+
+            object Value = null;
+
+            if (_value is IntPtr _Value)
+                Value = _Value.ToInt64();
+            else
+                Value = _value;
+
+            byte[] result = (byte[])GetBytes.Invoke(null, new[] { Value });
 
             return WriteProcessMemory(handle, address, result, Unsafe.SizeOf<T>(), out bytesRead);
         }
